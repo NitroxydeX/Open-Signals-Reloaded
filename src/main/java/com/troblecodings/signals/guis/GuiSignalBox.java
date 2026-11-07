@@ -73,13 +73,13 @@ public class GuiSignalBox extends GuiBase {
     public static final int TRAIN_NUMBER_BACKGROUND_COLOR = ConfigHandler.CLIENT.signalboxTrainnumberBackgroundColor
             .get();
 
-    public static final ResourceLocation REDSTONE_OFF = new ResourceLocation(OpenSignalsMain.MODID,
+    public static final ResourceLocation REDSTONE_OFF = ResourceLocation.fromNamespaceAndPath(OpenSignalsMain.MODID,
             "gui/textures/redstone_off.png");
-    public static final ResourceLocation REDSTONE_OFF_BLOCKED = new ResourceLocation(
+    public static final ResourceLocation REDSTONE_OFF_BLOCKED = ResourceLocation.fromNamespaceAndPath(
             OpenSignalsMain.MODID, "gui/textures/redstone_off_blocked.png");
-    public static final ResourceLocation REDSTONE_ON = new ResourceLocation(OpenSignalsMain.MODID,
+    public static final ResourceLocation REDSTONE_ON = ResourceLocation.fromNamespaceAndPath(OpenSignalsMain.MODID,
             "gui/textures/redstone_on.png");
-    public static final ResourceLocation REDSTONE_ON_BLOCKED = new ResourceLocation(
+    public static final ResourceLocation REDSTONE_ON_BLOCKED = ResourceLocation.fromNamespaceAndPath(
             OpenSignalsMain.MODID, "gui/textures/redstone_on_blocked.png");
 
     private final UIEntity lowerEntity = new UIEntity();
@@ -452,7 +452,7 @@ public class GuiSignalBox extends GuiBase {
             final int id = t.ordinal();
             final UIEntity icon = new UIEntity();
             final UITexture texture = t.equals(LinkType.SIGNALBOX)
-                    ? new UITexture(new ResourceLocation(OpenSignalsMain.MODID,
+                    ? new UITexture(ResourceLocation.fromNamespaceAndPath(OpenSignalsMain.MODID,
                             "textures/blocks/signalbox.png"))
                     : new UITexture(UISignalBoxIcons.ICON, 0.2 * id, 0.5, 0.2 * id + 0.2, 1);
             icon.add(texture);

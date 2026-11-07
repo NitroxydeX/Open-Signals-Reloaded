@@ -36,7 +36,7 @@ public class RedstoneIOTileEntity extends SyncableTileEntity implements ISyncabl
     public String getNameWrapper() {
         final String name = super.getNameWrapper();
         return name == null || name.isEmpty()
-                ? this.getBlockState().getBlock().getRegistryName().getPath()
+                ? net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(this.getBlockState().getBlock()).getPath()
                 : name;
     }
 

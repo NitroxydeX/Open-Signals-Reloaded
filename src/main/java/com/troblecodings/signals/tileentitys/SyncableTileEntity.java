@@ -7,6 +7,7 @@ import com.troblecodings.guilib.ecs.interfaces.UIClientSync;
 import com.troblecodings.signals.core.TileEntityInfo;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.Level;
 
@@ -19,7 +20,7 @@ public class SyncableTileEntity extends BasicBlockEntity {
     protected final ArrayList<UIClientSync> clientSyncs = new ArrayList<>();
 
     @Override
-    public CompoundTag getUpdateTag() {
+    public CompoundTag getUpdateTag(final HolderLookup.Provider registries) {
         final NBTWrapper wrapper = new NBTWrapper();
         saveWrapper(wrapper);
         return wrapper.tag;

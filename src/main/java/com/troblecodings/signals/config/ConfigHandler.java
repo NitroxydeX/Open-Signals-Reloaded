@@ -2,8 +2,8 @@ package com.troblecodings.signals.config;
 
 import com.troblecodings.guilib.ecs.GuiConfigHandler;
 
-import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.common.ForgeConfigSpec.ConfigValue;
+import net.neoforged.neoforge.common.ModConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec.ConfigValue;
 
 public final class ConfigHandler {
 
@@ -11,14 +11,19 @@ public final class ConfigHandler {
 
     }
 
-    private static final ForgeConfigSpec.Builder CLIENT_BUILDER = new ForgeConfigSpec.Builder();
-    private static final ForgeConfigSpec.Builder GENERAL_BUILDER = new ForgeConfigSpec.Builder();
+    private static final ModConfigSpec.Builder CLIENT_BUILDER = new ModConfigSpec.Builder();
+    private static final ModConfigSpec.Builder GENERAL_BUILDER = new ModConfigSpec.Builder();
 
     public static final Client CLIENT = new Client(CLIENT_BUILDER);
     public static final General GENERAL = new General(GENERAL_BUILDER);
 
-    public static final ForgeConfigSpec CLIENT_SPEC = CLIENT_BUILDER.build();
-    public static final ForgeConfigSpec GENERAL_SPEC = GENERAL_BUILDER.build();
+    public static final ModConfigSpec CLIENT_SPEC = CLIENT_BUILDER.build();
+    public static final ModConfigSpec GENERAL_SPEC = GENERAL_BUILDER.build();
+
+    public static int getSignalLightEmission() {
+        return GENERAL_SPEC.isLoaded() ? GENERAL.lightEmission.get()
+                : GENERAL.lightEmission.getDefault();
+    }
 
     public static class General {
 
@@ -27,7 +32,7 @@ public final class ConfigHandler {
         public final ConfigValue<Boolean> canAddRSPathToSaver;
         public final ConfigValue<Boolean> canInputBlockShuntingPath;
 
-        public General(final ForgeConfigSpec.Builder builder) {
+        public General(final ModConfigSpec.Builder builder) {
             String desc;
             builder.push("General");
 
@@ -63,7 +68,7 @@ public final class ConfigHandler {
         public final ConfigValue<Integer> signalboxTrainnumberBackgroundColor;
         public final ConfigValue<Integer> renderDistance;
 
-        public Client(final ForgeConfigSpec.Builder builder) {
+        public Client(final ModConfigSpec.Builder builder) {
             String desc;
             builder.push("Client Only");
 
@@ -99,15 +104,15 @@ public final class ConfigHandler {
 
             desc = "Change the color of a default text. Default: -16777216";
             GuiConfigHandler.basicTextColor = builder.comment(desc).define("Basic text color",
-                    0xFF000000);
+                    "0xFF000000");
 
             desc = "Change the color of an info text. Default: -16777046";
             GuiConfigHandler.infoTextColor = builder.comment(desc).define("info text color",
-                    0xFF0000AA);
+                    "0xFF0000AA");
 
             desc = "Change the color of an error text. Default: -16776961";
             GuiConfigHandler.errorTextColor = builder.comment(desc).define("Error text color",
-                    0xFF0000FF);
+                    "0xFF0000FF");
 
             desc = "Change the render distance for animated signals. Default: 128";
             renderDistance = builder.comment(desc).define("Render distance", 128);

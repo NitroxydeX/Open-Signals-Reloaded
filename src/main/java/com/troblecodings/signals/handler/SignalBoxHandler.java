@@ -29,8 +29,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.event.world.WorldEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.neoforged.neoforge.event.level.LevelEvent;
+import net.neoforged.bus.api.SubscribeEvent;
 
 public final class SignalBoxHandler {
 
@@ -305,8 +305,8 @@ public final class SignalBoxHandler {
     private static final String BOOL_STATE = "boolState";
 
     @SubscribeEvent
-    public static void onWorldSave(final WorldEvent.Save event) {
-        final Level world = (Level) event.getWorld();
+    public static void onWorldSave(final LevelEvent.Save event) {
+        final Level world = (Level) event.getLevel();
         if (world.isClientSide)
             return;
         final NBTWrapper wrapper = new NBTWrapper();
@@ -346,15 +346,15 @@ public final class SignalBoxHandler {
             if (file.delete() || !Files.exists(file.toPath())) {
                 file.createNewFile();
             }
-            NbtIo.write(wrapper.tag, file);
+            NbtIo.write(wrapper.tag, file.toPath());
         } catch (final IOException e) {
             e.printStackTrace();
         }
     }
 
     @SubscribeEvent
-    public static void onWorldLoad(final WorldEvent.Load event) {
-        final Level world = (Level) event.getWorld();
+    public static void onWorldLoad(final LevelEvent.Load event) {
+        final Level world = (Level) event.getLevel();
         if (world.isClientSide)
             return;
         migrateFilesToNewDirectory(world);
@@ -362,7 +362,7 @@ public final class SignalBoxHandler {
             final Path newPath = PathGetter.getNewPathForFiles(world, "signalboxhandlerfiles");
             if (!Files.exists(newPath))
                 return;
-            final NBTWrapper wrapper = new NBTWrapper(NbtIo.read(newPath.toFile()));
+            final NBTWrapper wrapper = new NBTWrapper(NbtIo.read(newPath));
             if (wrapper.isTagNull())
                 return;
             wrapper.getList(LINKING_UPDATE).forEach(tag -> {

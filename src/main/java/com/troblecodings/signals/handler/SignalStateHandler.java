@@ -32,11 +32,10 @@ import com.troblecodings.signals.core.SignalStateLoadHoler;
 import com.troblecodings.signals.core.StateInfo;
 import com.troblecodings.signals.enums.ChangedState;
 
-import io.netty.buffer.Unpooled;
-import net.minecraft.client.Minecraft;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.protocol.game.ClientboundCustomPayloadPacket;
-import net.minecraft.network.protocol.game.ServerboundCustomPayloadPacket;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -44,16 +43,15 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.chunk.ChunkAccess;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.server.ServerStoppingEvent;
-import net.minecraftforge.event.world.ChunkWatchEvent;
-import net.minecraftforge.event.world.WorldEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.network.NetworkEvent.ClientCustomPayloadEvent;
-import net.minecraftforge.network.NetworkRegistry;
-import net.minecraftforge.network.event.EventNetworkChannel;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
+import net.neoforged.neoforge.event.level.ChunkWatchEvent;
+import net.neoforged.neoforge.event.level.LevelEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 
-public final class SignalStateHandler implements INetworkSync {
+public final class SignalStateHandler {
 
     private static ExecutorService writeService = Executors.newFixedThreadPool(5);
     private static final ExecutorService THREAD_SERVICE = Executors.newCachedThreadPool();
@@ -65,18 +63,22 @@ public final class SignalStateHandler implements INetworkSync {
             new HashMap<>();
     private static final Map<SignalStateInfo, List<SignalStateListener>> TASKS_WHEN_LOAD =
             new HashMap<>();
-    private static EventNetworkChannel channel;
-    private static ResourceLocation channelName;
+    private static INetworkSync clientHandler;
 
     private SignalStateHandler() {
     }
 
-    public static void init() {
-        channelName = new ResourceLocation(OpenSignalsMain.MODID, "signalstatehandler");
-        channel = NetworkRegistry.newEventChannel(channelName, () -> OpenSignalsMain.MODID,
-                OpenSignalsMain.MODID::equalsIgnoreCase, OpenSignalsMain.MODID::equalsIgnoreCase);
-        channel.registerObject(new SignalStateHandler());
-        MinecraftForge.EVENT_BUS.register(SignalStateHandler.class);
+    public static void init(final IEventBus eventBus) {
+        eventBus.addListener(SignalStateHandler::registerPayloads);
+        NeoForge.EVENT_BUS.register(SignalStateHandler.class);
+    }
+
+    private static void registerPayloads(final RegisterPayloadHandlersEvent event) {
+        event.registrar("1").playToClient(SignalStatePayload.TYPE, SignalStatePayload.STREAM_CODEC,
+                (payload, context) -> {
+                    if (clientHandler != null)
+                        clientHandler.deserializeClient(ByteBuffer.wrap(payload.data()));
+                });
     }
 
     @SubscribeEvent
@@ -96,8 +98,8 @@ public final class SignalStateHandler implements INetworkSync {
         writeService = null;
     }
 
-    public static void registerToNetworkChannel(final Object object) {
-        channel.registerObject(object);
+    public static void registerToNetworkChannel(final INetworkSync handler) {
+        clientHandler = handler;
     }
 
     public static void createStates(final SignalStateInfo info,
@@ -390,8 +392,8 @@ public final class SignalStateHandler implements INetworkSync {
     }
 
     @SubscribeEvent
-    public static void onWorldLoad(final WorldEvent.Load load) {
-        final Level world = (Level) load.getWorld();
+    public static void onWorldLoad(final LevelEvent.Load load) {
+        final Level world = (Level) load.getLevel();
         if (world.isClientSide)
             return;
         final Path path = PathGetter.getNewPathForFiles(world, "signalfiles");
@@ -405,8 +407,8 @@ public final class SignalStateHandler implements INetworkSync {
     }
 
     @SubscribeEvent
-    public static void onWorldSave(final WorldEvent.Save save) {
-        final Level world = (Level) save.getWorld();
+    public static void onWorldSave(final LevelEvent.Save save) {
+        final Level world = (Level) save.getLevel();
         if (world.isClientSide)
             return;
 
@@ -422,11 +424,11 @@ public final class SignalStateHandler implements INetworkSync {
     }
 
     @SubscribeEvent
-    public static void onWorldUnload(final WorldEvent.Unload unload) {
-        if (unload.getWorld().isClientSide())
+    public static void onWorldUnload(final LevelEvent.Unload unload) {
+        if (unload.getLevel().isClientSide())
             return;
         synchronized (ALL_LEVEL_FILES) {
-            ALL_LEVEL_FILES.remove(unload.getWorld());
+            ALL_LEVEL_FILES.remove(unload.getLevel());
         }
     }
 
@@ -501,7 +503,7 @@ public final class SignalStateHandler implements INetworkSync {
 
     @SubscribeEvent
     public static void onChunkWatch(final ChunkWatchEvent.Watch event) {
-        final ServerLevel world = event.getWorld();
+        final ServerLevel world = event.getLevel();
         if (world.isClientSide)
             return;
         final ChunkAccess chunk = world.getChunk(event.getPos().getWorldPosition());
@@ -519,7 +521,7 @@ public final class SignalStateHandler implements INetworkSync {
 
     @SubscribeEvent
     public static void onChunkUnWatch(final ChunkWatchEvent.UnWatch event) {
-        final ServerLevel world = event.getWorld();
+        final ServerLevel world = event.getLevel();
         if (world.isClientSide)
             return;
         final ChunkAccess chunk = world.getChunk(event.getPos().getWorldPosition());
@@ -617,19 +619,35 @@ public final class SignalStateHandler implements INetworkSync {
     }
 
     private static void sendTo(final Player player, final ByteBuffer buf) {
-        final FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.copiedBuffer(buf.position(0)));
-        if (player instanceof ServerPlayer) {
-            final ServerPlayer server = (ServerPlayer) player;
-            server.connection.send(new ClientboundCustomPayloadPacket(channelName, buffer));
-        } else {
-            final Minecraft mc = Minecraft.getInstance();
-            mc.getConnection().send(new ServerboundCustomPayloadPacket(channelName, buffer));
+        if (player instanceof ServerPlayer server) {
+            final ByteBuffer copy = buf.duplicate();
+            copy.rewind();
+            final byte[] data = new byte[copy.remaining()];
+            copy.get(data);
+            server.connection.send(new ClientboundCustomPayloadPacket(new SignalStatePayload(data)));
         }
     }
 
-    @SubscribeEvent
-    public void clientEvent(final ClientCustomPayloadEvent event) {
-        deserializeServer(event.getPayload().nioBuffer());
-        event.getSource().get().setPacketHandled(true);
+    private record SignalStatePayload(byte[] data) implements CustomPacketPayload {
+        private static final Type<SignalStatePayload> TYPE = new Type<>(
+                ResourceLocation.fromNamespaceAndPath(OpenSignalsMain.MODID, "signalstatehandler"));
+        private static final StreamCodec<RegistryFriendlyByteBuf, SignalStatePayload> STREAM_CODEC =
+                new StreamCodec<>() {
+                    @Override
+                    public SignalStatePayload decode(final RegistryFriendlyByteBuf buffer) {
+                        return new SignalStatePayload(buffer.readByteArray(1_048_576));
+                    }
+
+                    @Override
+                    public void encode(final RegistryFriendlyByteBuf buffer,
+                            final SignalStatePayload payload) {
+                        buffer.writeByteArray(payload.data());
+                    }
+                };
+
+        @Override
+        public Type<SignalStatePayload> type() {
+            return TYPE;
+        }
     }
 }

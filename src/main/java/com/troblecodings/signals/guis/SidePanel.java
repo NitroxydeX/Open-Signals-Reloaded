@@ -54,13 +54,13 @@ import net.minecraft.resources.ResourceLocation;
 public class SidePanel {
 
     public static final ResourceLocation COUNTER_TEXTURE =
-            new ResourceLocation(OpenSignalsMain.MODID, "gui/textures/counter.png");
+            ResourceLocation.fromNamespaceAndPath(OpenSignalsMain.MODID, "gui/textures/counter.png");
     public static final ResourceLocation REDSTONE =
-            new ResourceLocation(OpenSignalsMain.MODID, "gui/textures/redstone.png");
+            ResourceLocation.fromNamespaceAndPath(OpenSignalsMain.MODID, "gui/textures/redstone.png");
     public static final ResourceLocation SAVE =
-            new ResourceLocation(OpenSignalsMain.MODID, "gui/textures/save.png");
+            ResourceLocation.fromNamespaceAndPath(OpenSignalsMain.MODID, "gui/textures/save.png");
     public static final ResourceLocation EMERGENCY =
-            new ResourceLocation(OpenSignalsMain.MODID, "gui/textures/emergency.png");
+            ResourceLocation.fromNamespaceAndPath(OpenSignalsMain.MODID, "gui/textures/emergency.png");
 
     private boolean showHelpPage = true;
     private final UIEntity helpPage = new UIEntity();

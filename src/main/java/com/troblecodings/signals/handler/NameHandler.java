@@ -29,12 +29,11 @@ import com.troblecodings.signals.core.StateInfo;
 import com.troblecodings.signals.core.StateLoadHolder;
 import com.troblecodings.signals.enums.ChangedState;
 
-import io.netty.buffer.Unpooled;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.protocol.game.ClientboundCustomPayloadPacket;
-import net.minecraft.network.protocol.game.ServerboundCustomPayloadPacket;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -42,16 +41,15 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.chunk.ChunkAccess;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.server.ServerStoppingEvent;
-import net.minecraftforge.event.world.ChunkWatchEvent;
-import net.minecraftforge.event.world.WorldEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.network.NetworkEvent.ClientCustomPayloadEvent;
-import net.minecraftforge.network.NetworkRegistry;
-import net.minecraftforge.network.event.EventNetworkChannel;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
+import net.neoforged.neoforge.event.level.ChunkWatchEvent;
+import net.neoforged.neoforge.event.level.LevelEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 
-public final class NameHandler implements INetworkSync {
+public final class NameHandler {
 
     private static final Map<StateInfo, String> ALL_NAMES = new HashMap<>();
     private static final Map<Level, NameHandlerFileV2> ALL_LEVEL_FILES = new HashMap<>();
@@ -59,14 +57,18 @@ public final class NameHandler implements INetworkSync {
     private static final Map<StateInfo, List<LoadHolder<?>>> LOAD_COUNTER = new HashMap<>();
     private static ExecutorService writeService = Executors.newFixedThreadPool(5);
     private static final ExecutorService THREAD_SERVICE = Executors.newCachedThreadPool();
-    private static EventNetworkChannel channel;
-    private static ResourceLocation channelName;
+    private static INetworkSync clientHandler;
 
-    public static void init() {
-        channelName = new ResourceLocation(OpenSignalsMain.MODID, "namehandler");
-        channel = NetworkRegistry.newEventChannel(channelName, () -> OpenSignalsMain.MODID,
-                OpenSignalsMain.MODID::equalsIgnoreCase, OpenSignalsMain.MODID::equalsIgnoreCase);
-        channel.registerObject(new NameHandler());
+    public static void init(final IEventBus eventBus) {
+        eventBus.addListener(NameHandler::registerPayloads);
+    }
+
+    private static void registerPayloads(final RegisterPayloadHandlersEvent event) {
+        event.registrar("1").playToClient(NamePayload.TYPE, NamePayload.STREAM_CODEC,
+                (payload, context) -> {
+                    if (clientHandler != null)
+                        clientHandler.deserializeClient(ByteBuffer.wrap(payload.data()));
+                });
     }
 
     @SubscribeEvent
@@ -86,8 +88,8 @@ public final class NameHandler implements INetworkSync {
         writeService = null;
     }
 
-    public static void registerToNetworkChannel(final Object obj) {
-        channel.registerObject(obj);
+    public static void registerToNetworkChannel(final INetworkSync handler) {
+        clientHandler = handler;
     }
 
     public static void createName(final StateInfo info, final String name, final Player creator) {
@@ -230,8 +232,8 @@ public final class NameHandler implements INetworkSync {
     }
 
     @SubscribeEvent
-    public static void onWorldLoad(final WorldEvent.Load load) {
-        final Level world = (Level) load.getWorld();
+    public static void onWorldLoad(final LevelEvent.Load load) {
+        final Level world = (Level) load.getLevel();
         if (world.isClientSide)
             return;
         final Path path = PathGetter.getNewPathForFiles(world, "namefiles");
@@ -245,8 +247,8 @@ public final class NameHandler implements INetworkSync {
     }
 
     @SubscribeEvent
-    public static void onWorldSave(final WorldEvent.Save event) {
-        final Level world = (Level) event.getWorld();
+    public static void onWorldSave(final LevelEvent.Save event) {
+        final Level world = (Level) event.getLevel();
         if (world.isClientSide)
             return;
         Map<StateInfo, String> map;
@@ -260,11 +262,11 @@ public final class NameHandler implements INetworkSync {
     }
 
     @SubscribeEvent
-    public static void onWorldUnload(final WorldEvent.Unload unload) {
-        if (unload.getWorld().isClientSide())
+    public static void onWorldUnload(final LevelEvent.Unload unload) {
+        if (unload.getLevel().isClientSide())
             return;
         synchronized (ALL_LEVEL_FILES) {
-            ALL_LEVEL_FILES.remove(unload.getWorld());
+            ALL_LEVEL_FILES.remove(unload.getLevel());
         }
     }
 
@@ -287,7 +289,7 @@ public final class NameHandler implements INetworkSync {
 
     @SubscribeEvent
     public static void onChunkWatch(final ChunkWatchEvent.Watch event) {
-        final ServerLevel world = event.getWorld();
+        final ServerLevel world = event.getLevel();
         if (world.isClientSide)
             return;
         final ChunkAccess chunk = world.getChunk(event.getPos().getWorldPosition());
@@ -305,7 +307,7 @@ public final class NameHandler implements INetworkSync {
 
     @SubscribeEvent
     public static void onChunkUnWatch(final ChunkWatchEvent.UnWatch event) {
-        final ServerLevel world = event.getWorld();
+        final ServerLevel world = event.getLevel();
         if (world.isClientSide)
             return;
         final ChunkAccess chunk = world.getChunk(event.getPos().getWorldPosition());
@@ -323,7 +325,7 @@ public final class NameHandler implements INetworkSync {
 
     @SubscribeEvent
     public static void onPlayerJoin(final PlayerEvent.PlayerLoggedInEvent event) {
-        final Player player = event.getPlayer();
+        final Player player = event.getEntity();
         Map<StateInfo, String> map;
         synchronized (ALL_NAMES) {
             map = ImmutableMap.copyOf(ALL_NAMES);
@@ -425,19 +427,35 @@ public final class NameHandler implements INetworkSync {
     }
 
     private static void sendTo(final Player player, final ByteBuffer buf) {
-        final FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.copiedBuffer(buf.position(0)));
-        if (player instanceof ServerPlayer) {
-            final ServerPlayer server = (ServerPlayer) player;
-            server.connection.send(new ClientboundCustomPayloadPacket(channelName, buffer));
-        } else {
-            final Minecraft mc = Minecraft.getInstance();
-            mc.getConnection().send(new ServerboundCustomPayloadPacket(channelName, buffer));
+        if (player instanceof ServerPlayer server) {
+            final ByteBuffer copy = buf.duplicate();
+            copy.rewind();
+            final byte[] data = new byte[copy.remaining()];
+            copy.get(data);
+            server.connection.send(new ClientboundCustomPayloadPacket(new NamePayload(data)));
         }
     }
 
-    @SubscribeEvent
-    public void clientEvent(final ClientCustomPayloadEvent event) {
-        deserializeServer(event.getPayload().nioBuffer());
-        event.getSource().get().setPacketHandled(true);
+    private record NamePayload(byte[] data) implements CustomPacketPayload {
+        private static final Type<NamePayload> TYPE = new Type<>(
+                ResourceLocation.fromNamespaceAndPath(OpenSignalsMain.MODID, "namehandler"));
+        private static final StreamCodec<RegistryFriendlyByteBuf, NamePayload> STREAM_CODEC =
+                new StreamCodec<>() {
+                    @Override
+                    public NamePayload decode(final RegistryFriendlyByteBuf buffer) {
+                        return new NamePayload(buffer.readByteArray(1_048_576));
+                    }
+
+                    @Override
+                    public void encode(final RegistryFriendlyByteBuf buffer,
+                            final NamePayload payload) {
+                        buffer.writeByteArray(payload.data());
+                    }
+                };
+
+        @Override
+        public Type<NamePayload> type() {
+            return TYPE;
+        }
     }
 }

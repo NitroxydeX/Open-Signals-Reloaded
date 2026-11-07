@@ -40,9 +40,9 @@ import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.Direction;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.model.data.EmptyModelData;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.client.model.data.ModelData;
 
 @OnlyIn(Dist.CLIENT)
 public class GuiSignalController extends GuiBase {
@@ -198,7 +198,7 @@ public class GuiSignalController extends GuiBase {
         rightSide.add(toggle);
         for (final Direction face : Direction.values()) {
             final List<BakedQuad> quad =
-                    model.getQuads(state, face, SignalCustomModel.RANDOM, EmptyModelData.INSTANCE);
+                    model.getQuads(state, face, SignalCustomModel.RANDOM, ModelData.EMPTY, null);
             final UIEntity faceEntity = new UIEntity();
             faceEntity.setWidth(20);
             faceEntity.setHeight(20);
@@ -241,7 +241,7 @@ public class GuiSignalController extends GuiBase {
         lowerEntity.setInherits(true);
 
         final String name = I18Wrapper
-                .format("block." + OpenSignalsMain.MODID + "." + signal.delegate.name().getPath())
+                .format("block." + OpenSignalsMain.MODID + "." + net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(signal).getPath())
                 + "; Name: "
                 + ClientNameHandler.getClientName(new StateInfo(mc.level, controller.getPos()))
                         .replace("[n]", " ");

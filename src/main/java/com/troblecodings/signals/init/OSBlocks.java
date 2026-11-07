@@ -4,6 +4,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.IdentityHashMap;
 
 import com.troblecodings.signals.OpenSignalsMain;
 import com.troblecodings.signals.blocks.BasicBlock;
@@ -22,14 +24,11 @@ import com.troblecodings.signals.contentpacks.SignalBridgeBlockParser;
 import com.troblecodings.signals.core.SignalLoader;
 
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.BlockItem;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Item.Properties;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraftforge.event.RegistryEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.registries.IForgeRegistry;
+import net.neoforged.neoforge.registries.RegisterEvent;
+import net.neoforged.bus.api.SubscribeEvent;
 
 public final class OSBlocks {
 
@@ -48,6 +47,7 @@ public final class OSBlocks {
     public static final PostConnectable POST_CONNECTABLE = new PostConnectable();
 
     public static final List<BasicBlock> BLOCKS_TO_REGISTER = new ArrayList<>();
+    public static final Map<BasicBlock, ResourceLocation> BLOCK_IDS = new IdentityHashMap<>();
 
     public static void init() {
         final Field[] fields = OSBlocks.class.getFields();
@@ -76,7 +76,7 @@ public final class OSBlocks {
         if (BLOCKS_TO_REGISTER.contains(block))
             return;
         final String name = pName.toLowerCase().trim();
-        block.setRegistryName(new ResourceLocation(OpenSignalsMain.MODID, name));
+        BLOCK_IDS.put(block, ResourceLocation.fromNamespaceAndPath(OpenSignalsMain.MODID, name));
         BLOCKS_TO_REGISTER.add(block);
         if (block instanceof Signal) {
             if (Signal.SIGNALS.containsKey(name))
@@ -87,35 +87,34 @@ public final class OSBlocks {
     }
 
     @SubscribeEvent
-    public static void registerBlock(final RegistryEvent.Register<Block> event) {
-        if (POST.getRegistryName() == null || POST_CONNECTABLE.getRegistryName() == null) {
-            OSBlocks.init();
-        }
-        final IForgeRegistry<Block> registry = event.getRegistry();
-        BLOCKS_TO_REGISTER.forEach(registry::register);
+    public static void registerBlock(final RegisterEvent event) {
+        event.register(Registries.BLOCK, registry -> {
+            if (!BLOCK_IDS.containsKey(POST))
+                OSBlocks.init();
+            BLOCKS_TO_REGISTER.forEach(block -> registry.register(BLOCK_IDS.get(block), block));
+        });
     }
 
     @SubscribeEvent
     public static void registerBlockEntitys(
-            final RegistryEvent.Register<BlockEntityType<?>> event) {
-        if (POST.getRegistryName() == null || POST_CONNECTABLE.getRegistryName() == null) {
-            OSBlocks.init();
-        }
-        final IForgeRegistry<BlockEntityType<?>> registry = event.getRegistry();
-        BasicBlock.BLOCK_ENTITYS.values().forEach(registry::register);
+            final RegisterEvent event) {
+        event.register(Registries.BLOCK_ENTITY_TYPE, registry -> {
+            if (!BLOCK_IDS.containsKey(POST))
+                OSBlocks.init();
+            BasicBlock.BLOCK_ENTITYS.forEach((supplier, type) ->
+                    registry.register(BasicBlock.getBlockEntityId(supplier), type));
+        });
     }
 
     @SubscribeEvent
-    public static void registerItem(final RegistryEvent.Register<Item> event) {
-        if (POST.getRegistryName() == null || POST_CONNECTABLE.getRegistryName() == null) {
-            OSBlocks.init();
-        }
-        final IForgeRegistry<Item> registry = event.getRegistry();
-        BLOCKS_TO_REGISTER.forEach(block -> {
-            if (block.shouldHaveItem()) {
-                registry.register(new BlockItem(block, new Properties().tab(OSTabs.TAB))
-                        .setRegistryName(block.getRegistryName()));
-            }
+    public static void registerItem(final RegisterEvent event) {
+        event.register(Registries.ITEM, registry -> {
+            if (!BLOCK_IDS.containsKey(POST))
+                OSBlocks.init();
+            BLOCKS_TO_REGISTER.forEach(block -> {
+                if (block.shouldHaveItem())
+                    registry.register(BLOCK_IDS.get(block), new BlockItem(block, new Properties()));
+            });
         });
     }
 }

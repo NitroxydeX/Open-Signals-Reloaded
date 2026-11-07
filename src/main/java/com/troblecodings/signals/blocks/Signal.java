@@ -7,11 +7,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Random;
+
 import java.util.function.Consumer;
 
 import com.google.common.collect.ImmutableList;
-import com.mojang.math.Quaternion;
+import org.joml.Quaternionf;
 import com.troblecodings.signals.OpenSignalsMain;
 import com.troblecodings.signals.SEProperty;
 import com.troblecodings.signals.config.ConfigHandler;
@@ -38,13 +38,17 @@ import com.troblecodings.signals.tileentitys.SignalTileEntity;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.client.gui.Font;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Item;
+
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
@@ -54,15 +58,15 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition.Builder;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
-import net.minecraft.world.level.material.Material;
+import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 public class Signal extends BasicBlock {
 
@@ -93,8 +97,8 @@ public class Signal extends BasicBlock {
     private final Map<SEProperty, Integer> signalPropertiesToInt = new HashMap<>();
 
     public Signal(final SignalProperties prop, final String name) {
-        super(Properties.of(Material.STONE).noOcclusion()
-                .lightLevel(u -> ConfigHandler.GENERAL.lightEmission.get())
+        super(Properties.of().mapColor(MapColor.STONE).noOcclusion().dynamicShape()
+                .lightLevel(u -> ConfigHandler.GENERAL.lightEmission.getDefault())
                 .isRedstoneConductor((_u1, _u2, _u3) -> false));
         this.prop = prop;
         this.id = getIDFromName(name);
@@ -189,14 +193,9 @@ public class Signal extends BasicBlock {
         return prop.shape;
     }
 
-    @Override
-    public boolean hasDynamicShape() {
-        return true;
-    }
-
-    @Override
+@Override
     public ItemStack getCloneItemStack(final BlockState state, final HitResult target,
-            final BlockGetter level, final BlockPos pos, final Player player) {
+            final net.minecraft.world.level.LevelReader level, final BlockPos pos, final Player player) {
         return getPlacementtool().getDefaultInstance();
     }
 
@@ -220,7 +219,7 @@ public class Signal extends BasicBlock {
     }
 
     public String getSignalTypeName() {
-        return this.delegate.name().getPath();
+        return BuiltInRegistries.BLOCK.getKey(this).getPath();
     }
 
     @Override
@@ -305,7 +304,7 @@ public class Signal extends BasicBlock {
         }
 
         final SignalAngel face = state.getValue(Signal.ANGEL);
-        final Quaternion angle = face.getQuaternion();
+        final Quaternionf angle = face.getQuaternion();
 
         info.stack.pushPose();
         info.stack.translate(info.x + 0.5f, info.y + customRenderHeight, info.z + 0.5f);
@@ -318,8 +317,7 @@ public class Signal extends BasicBlock {
         }
 
         if (doubleSidedText) {
-            final Quaternion quad = new Quaternion(
-                    Quaternion.fromXYZ(0, (float) (-face.getRadians() + Math.PI), 0));
+            final Quaternionf quad = new Quaternionf().rotationY((float) (-face.getRadians() + Math.PI));
             info.stack.mulPose(quad);
             info.stack.mulPose(face.getQuaternion());
 
@@ -350,7 +348,8 @@ public class Signal extends BasicBlock {
             final String text = splitNames[j];
             final float textWidth = info.font.width(text);
             final float center = (signWidth - textWidth) / 2;
-            info.font.draw(info.stack, text, (int) center - 10, j * 10, this.prop.textColor);
+            info.font.drawInBatch(text, (int) center - 10, j * 10, this.prop.textColor, false,
+                    info.stack.last().pose(), info.source, Font.DisplayMode.NORMAL, 0, info.lightColor);
         }
         info.stack.popPose();
     }
@@ -366,7 +365,8 @@ public class Signal extends BasicBlock {
         info.stack.pushPose();
         info.stack.translate(offsetX * 0.015f, 0, offsetZ * 0.015f);
         info.stack.scale(-scale, -scale, 1);
-        info.font.draw(info.stack, name, -nameWidth / 2, 0, this.prop.textColor);
+        info.font.drawInBatch(name, -nameWidth / 2, 0, this.prop.textColor, false,
+                info.stack.last().pose(), info.source, Font.DisplayMode.NORMAL, 0, info.lightColor);
         info.stack.popPose();
     }
 
@@ -379,29 +379,45 @@ public class Signal extends BasicBlock {
     }
 
     @Override
-    public InteractionResult use(final BlockState blockstate, final Level level,
-            final BlockPos blockPos, final Player placer, final InteractionHand hand,
-            final BlockHitResult blockHit) {
-        if (!(blockstate.getBlock() instanceof Signal))
-            return InteractionResult.FAIL;
-        final SignalStateInfo stateInfo = new SignalStateInfo(level, blockPos, this);
-        final boolean customname = canHaveCustomname(SignalStateHandler.getStates(stateInfo));
-        final Item item = placer.getItemInHand(InteractionHand.MAIN_HAND).getItem();
-        if (item.equals(OSItems.MANIPULATOR) && (canBeLinked() || customname)) {
-            OpenSignalsMain.handler.invokeGui(Signal.class, placer, level, blockPos, "signal");
-            return InteractionResult.SUCCESS;
+    protected ItemInteractionResult useItemOn(final ItemStack stack, final BlockState state,
+            final Level level, final BlockPos pos, final Player player,
+            final InteractionHand hand, final BlockHitResult hit) {
+        final InteractionResult result = interact(level, pos, player, stack);
+        return result.consumesAction() ? ItemInteractionResult.sidedSuccess(level.isClientSide)
+                : ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+    }
+
+    @Override
+    public int getLightEmission(final BlockState state, final BlockGetter level, final BlockPos pos) {
+        return ConfigHandler.getSignalLightEmission();
+    }
+
+    @Override
+    protected InteractionResult useWithoutItem(final BlockState state, final Level level,
+            final BlockPos pos, final Player player, final BlockHitResult hit) {
+        return interact(level, pos, player, ItemStack.EMPTY);
+    }
+
+    private InteractionResult interact(final Level level, final BlockPos pos, final Player player,
+            final ItemStack heldItem) {
+        final SignalStateInfo stateInfo = new SignalStateInfo(level, pos, this);
+        final boolean customName = canHaveCustomname(SignalStateHandler.getStates(stateInfo));
+        if (heldItem.is(OSItems.MANIPULATOR) && (canBeLinked() || customName)) {
+            if (!level.isClientSide) {
+                OpenSignalsMain.handler.invokeGui(Signal.class, player, level, pos, "signal");
+            }
+            return InteractionResult.sidedSuccess(level.isClientSide);
         }
         if (loadRedstoneOutput(level, stateInfo)) {
-            level.blockUpdated(blockPos, this);
-            return InteractionResult.SUCCESS;
+            if (!level.isClientSide) level.blockUpdated(pos, this);
+            return InteractionResult.sidedSuccess(level.isClientSide);
         }
         return InteractionResult.PASS;
     }
-
     @SuppressWarnings("unchecked")
     private boolean loadRedstoneOutput(final Level worldIn, final SignalStateInfo info) {
         if (worldIn.isClientSide)
-            return true;
+            return !this.prop.redstoneOutputs.isEmpty();
         if (!this.prop.redstoneOutputs.isEmpty()) {
             final Map<SEProperty, String> properties = SignalStateHandler.getStates(info);
             for (final ValuePack pack : this.prop.redstoneOutputs) {
@@ -480,7 +496,7 @@ public class Signal extends BasicBlock {
 
     @Override
     public void tick(final BlockState state, final ServerLevel world, final BlockPos pos,
-            final Random rand) {
+            final RandomSource rand) {
         if (this.prop.sounds.isEmpty() || world.isClientSide)
             return;
         final SignalStateInfo stateInfo = new SignalStateInfo(world, pos, this);

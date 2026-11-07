@@ -12,25 +12,20 @@ import com.troblecodings.signals.OpenSignalsMain;
 import com.troblecodings.signals.animation.SignalAnimation;
 import com.troblecodings.signals.blocks.Signal;
 import com.troblecodings.signals.contentpacks.SignalAnimationConfigParser;
-import com.troblecodings.signals.core.SignalAngel;
 import com.troblecodings.signals.parser.FunctionParsingInfo;
 import com.troblecodings.signals.parser.LogicParser;
 import com.troblecodings.signals.parser.LogicalParserException;
 
-import net.minecraft.client.resources.model.ModelResourceLocation;
-import net.minecraft.server.packs.resources.ResourceManager;
-import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.model.ForgeModelBakery;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 @OnlyIn(Dist.CLIENT)
-public final class CustomModelLoader implements ResourceManagerReloadListener {
+public final class CustomModelLoader {
 
-    private static HashMap<String, List<SignalModelLoaderInfo>> registeredModels = new HashMap<>();
+    private static final HashMap<String, List<SignalModelLoaderInfo>> registeredModels = new HashMap<>();
 
     public static final CustomModelLoader INSTANCE = new CustomModelLoader();
-    private MapWrapper wrapper;
+    private boolean loaded;
 
     private CustomModelLoader() {
     }
@@ -95,33 +90,24 @@ public final class CustomModelLoader implements ResourceManagerReloadListener {
         }
     }
 
-    private void defaultModel(final MapWrapper wrapper, final String name) {
-        wrapper.putNormal(new ModelResourceLocation(OpenSignalsMain.MODID, name, "inventory"),
-                DefaultModel.INSTANCE);
-        wrapper.putNormal(new ModelResourceLocation(OpenSignalsMain.MODID, name, ""),
-                DefaultModel.INSTANCE);
+    public synchronized void invalidate() {
+        loaded = false;
+        registeredModels.clear();
+        SignalCustomModel.clearAnimationModels();
     }
 
-    public void prepare() {
-        final ForgeModelBakery bakery = ForgeModelBakery.instance();
-        if (!(bakery.unbakedCache instanceof MapWrapper)) {
-            wrapper = new MapWrapper(bakery.unbakedCache, registeredModels.keySet());
-            defaultModel(wrapper, "ghostblock");
-            registeredModels.forEach((name, loaderList) -> {
-                defaultModel(wrapper, name);
-                for (final SignalAngel angel : SignalAngel.values()) {
-                    wrapper.putNormal(
-                            new ModelResourceLocation(OpenSignalsMain.MODID, name,
-                                    "angel=" + angel.getNameWrapper()),
-                            new SignalCustomModel(angel, loaderList));
-                }
-            });
-            bakery.unbakedCache = wrapper;
+    public synchronized List<SignalModelLoaderInfo> getDefinition(final String name) {
+        if (!loaded) {
+            loadDefinitions();
+            loaded = true;
         }
+        final List<SignalModelLoaderInfo> definition = registeredModels.get(name);
+        if (definition == null) {
+            throw new IllegalArgumentException("No signal model definition for " + name);
+        }
+        return List.copyOf(definition);
     }
-
-    @Override
-    public void onResourceManagerReload(final ResourceManager manager) {
+    private void loadDefinitions() {
         registeredModels.clear();
 
         final Map<String, ModelExtention> extentions = new HashMap<>();

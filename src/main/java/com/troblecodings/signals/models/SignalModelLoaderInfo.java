@@ -3,9 +3,9 @@ package com.troblecodings.signals.models;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import net.minecraft.client.resources.model.UnbakedModel;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 @OnlyIn(Dist.CLIENT)
 public class SignalModelLoaderInfo {
@@ -17,7 +17,7 @@ public class SignalModelLoaderInfo {
     public final float z;
     public final Map<String, String> retexture;
     public boolean isAnimation = false;
-    public UnbakedModel model;
+
 
     public SignalModelLoaderInfo(final String name, final Predicate<ModelInfoWrapper> state,
             final float x, final float y, final float z, final Map<String, String> retexture) {

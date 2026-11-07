@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.function.Predicate;
 
-import com.mojang.math.Quaternion;
+import org.joml.Quaternionf;
 import com.troblecodings.core.VectorWrapper;
 import com.troblecodings.guilib.ecs.entitys.UIBlockRender;
 import com.troblecodings.guilib.ecs.entitys.UIBlockRenderInfo;
@@ -45,7 +45,7 @@ public class PreviewSideBar {
         blockRenderEntity.setWidth(60);
 
         blockRenderEntity.add(new UIDrag((x, y) -> blockRender
-                .updateRotation(Quaternion.fromXYZ(0, (float) x * MODIFIER, 0))));
+                .updateRotation(new Quaternionf().rotationXYZ(0, (float) x * MODIFIER, 0))));
 
         blockRenderEntity.add(new UIScissor());
         blockRenderEntity.add(new UIColor(GuiSignalBox.BACKGROUND_COLOR));
@@ -97,7 +97,7 @@ public class PreviewSideBar {
                 modelTranslation.setModelTranslation(entry.getValue().copy());
 
                 final BakedModel model = SignalCustomModel.getModelFromLocation(
-                        new ResourceLocation(OpenSignalsMain.MODID, entry.getKey()));
+                        ResourceLocation.fromNamespaceAndPath(OpenSignalsMain.MODID, entry.getKey()));
 
                 final UIBlockRenderInfo info = new UIBlockRenderInfo(model,
                         signal.defaultBlockState(), wrapper, new VectorWrapper(0.5f, 0.5f, 0.5f));

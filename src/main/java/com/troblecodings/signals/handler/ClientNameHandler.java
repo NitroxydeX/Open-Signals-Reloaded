@@ -11,8 +11,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.network.NetworkEvent.ServerCustomPayloadEvent;
 
 public class ClientNameHandler implements INetworkSync {
 
@@ -27,27 +25,25 @@ public class ClientNameHandler implements INetworkSync {
     @Override
     public void deserializeClient(final ReadBuffer buffer) {
         final Minecraft mc = Minecraft.getInstance();
-        mc.doRunTask(() -> {
-            final BlockPos pos = buffer.getBlockPos();
-            final ClientLevel world = mc.level;
-            final StateInfo info = new StateInfo(world, pos);
-            final boolean removed = buffer.getBoolean();
-            if (removed) {
-                setRemoved(info);
-                return;
-            }
-            final String name = buffer.getString();
-            synchronized (CLIENT_NAMES) {
-                CLIENT_NAMES.put(info, name);
-            }
-            if (world == null)
-                return;
-            final BlockState state = world.getBlockState(pos);
-            if (state == null)
-                return;
-            world.setBlocksDirty(pos, state, state);
-            world.setBlockAndUpdate(pos, state);
-        });
+        final BlockPos pos = buffer.getBlockPos();
+        final ClientLevel world = mc.level;
+        if (world == null)
+            return;
+        final StateInfo info = new StateInfo(world, pos);
+        final boolean removed = buffer.getBoolean();
+        if (removed) {
+            setRemoved(info);
+            return;
+        }
+        final String name = buffer.getString();
+        synchronized (CLIENT_NAMES) {
+            CLIENT_NAMES.put(info, name);
+        }
+        final BlockState state = world.getBlockState(pos);
+        if (state == null)
+            return;
+        world.setBlocksDirty(pos, state, state);
+        world.setBlockAndUpdate(pos, state);
     }
 
     private static void setRemoved(final StateInfo info) {
@@ -56,9 +52,4 @@ public class ClientNameHandler implements INetworkSync {
         }
     }
 
-    @SubscribeEvent
-    public void serverEvent(final ServerCustomPayloadEvent event) {
-        deserializeClient(event.getPayload().nioBuffer());
-        event.getSource().get().setPacketHandled(true);
-    }
 }

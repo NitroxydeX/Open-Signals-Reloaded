@@ -26,14 +26,15 @@ import com.troblecodings.signals.tileentitys.SignalTileEntity;
 
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLConstructModEvent;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.neoforged.fml.event.lifecycle.FMLConstructModEvent;
+import net.neoforged.bus.api.IEventBus;
 
 public class ClientProxy extends CommonProxy {
 
     @Override
-    public void initModEvent(final FMLConstructModEvent event) {
-        super.initModEvent(event);
+    public void initModEvent(final FMLConstructModEvent event, final IEventBus eventBus) {
+        super.initModEvent(event, eventBus);
         SignalStateHandler.registerToNetworkChannel(new ClientSignalStateHandler());
         NameHandler.registerToNetworkChannel(new ClientNameHandler());
         OpenSignalsMain.handler.addGui(Placementtool.class, GuiPlacementtool::new);

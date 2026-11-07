@@ -4,7 +4,7 @@ import java.util.Map;
 
 import com.google.common.collect.Maps;
 import com.troblecodings.core.NBTWrapper;
-import com.troblecodings.opensignals.linkableapi.ILinkableTile;
+import com.troblecodings.linkableapi.ILinkableTile;
 import com.troblecodings.signals.OpenSignalsMain;
 import com.troblecodings.signals.blocks.SignalBox;
 import com.troblecodings.signals.core.TileEntityInfo;
@@ -16,7 +16,7 @@ import com.troblecodings.signals.signalbox.SignalBoxTileEntity;
 import com.troblecodings.signals.signalbox.SignalBoxUtil;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -92,10 +92,14 @@ public class PathwayRequesterTileEntity extends SyncableTileEntity
     }
 
     @Override
+    public boolean link(final java.util.Optional<BlockPos> pos, final CompoundTag tag) {
+        return pos.isPresent() && link(pos.get(), tag);
+    }
+
     public boolean link(final BlockPos pos, final CompoundTag tag) {
         @SuppressWarnings("deprecation")
-        final Block block = Registry.BLOCK.get(
-                new ResourceLocation(OpenSignalsMain.MODID, tag.getString(pos.toShortString())));
+        final Block block = BuiltInRegistries.BLOCK.get(
+                ResourceLocation.fromNamespaceAndPath(OpenSignalsMain.MODID, tag.getString(pos.toShortString())));
         if (block instanceof SignalBox) {
             linkedSignalBox = pos;
             setChanged();

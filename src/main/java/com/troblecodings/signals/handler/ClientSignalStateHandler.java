@@ -1,10 +1,10 @@
 package com.troblecodings.signals.handler;
 
-import java.util.Calendar;
+
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+
+
 
 import com.google.common.collect.ImmutableMap;
 import com.troblecodings.core.ReadBuffer;
@@ -20,9 +20,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.network.NetworkEvent.ServerCustomPayloadEvent;
 
 public class ClientSignalStateHandler implements INetworkSync {
 
@@ -36,13 +33,14 @@ public class ClientSignalStateHandler implements INetworkSync {
         }
     }
 
-    private static final ExecutorService SERVICE = Executors.newFixedThreadPool(5);
 
     @Override
     public void deserializeClient(final ReadBuffer buffer) {
         final Minecraft mc = Minecraft.getInstance();
-        mc.doRunTask(() -> {
+        mc.execute(() -> {
             final ClientLevel level = mc.level;
+            if (level == null)
+                return;
             final BlockPos signalPos = buffer.getBlockPos();
             final StateInfo stateInfo = new StateInfo(level, signalPos);
             final int signalID = buffer.getInt();
@@ -62,24 +60,11 @@ public class ClientSignalStateHandler implements INetworkSync {
                 properties.putAll(newProperties);
                 CURRENTLY_LOADED_STATES.put(stateInfo, properties);
             }
-            if (level == null)
-                return;
-            final long startTime = Calendar.getInstance().getTimeInMillis();
-            SERVICE.execute(() -> {
-                BlockEntity entity;
-                while ((entity = level.getBlockEntity(signalPos)) == null) {
-                    final long currentTime = Calendar.getInstance().getTimeInMillis();
-                    if (currentTime - startTime >= 5000)
-                        return;
-                    continue;
-                }
-                if (!(entity instanceof SignalTileEntity))
-                    return;
-                final BlockState state = entity.getBlockState();
-                mc.level.setBlocksDirty(signalPos, state, state);
+            final BlockEntity entity = level.getBlockEntity(signalPos);
+            if (entity instanceof SignalTileEntity) {
                 entity.requestModelDataUpdate();
-                mc.levelRenderer.blockChanged(null, signalPos, null, null, 8);
-            });
+            }
+
         });
     }
 
@@ -89,9 +74,4 @@ public class ClientSignalStateHandler implements INetworkSync {
         }
     }
 
-    @SubscribeEvent
-    public void serverEvent(final ServerCustomPayloadEvent event) {
-        deserializeClient(event.getPayload().nioBuffer());
-        event.getSource().get().setPacketHandled(true);
-    }
 }

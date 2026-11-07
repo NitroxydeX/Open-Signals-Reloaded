@@ -31,18 +31,19 @@ import com.troblecodings.signals.init.OSSounds;
 import com.troblecodings.signals.items.Placementtool;
 import com.troblecodings.signals.signalbridge.SignalBridgeBasicBlock;
 
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLConstructModEvent;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.neoforged.fml.event.lifecycle.FMLConstructModEvent;
+import net.neoforged.bus.api.IEventBus;
 
 public class CommonProxy {
 
-    public void initModEvent(final FMLConstructModEvent event) {
-        SignalStateHandler.init();
-        NameHandler.init();
+    public void initModEvent(final FMLConstructModEvent event, final IEventBus eventBus) {
+        SignalStateHandler.init(eventBus);
+        NameHandler.init(eventBus);
         OSSounds.init();
 
         final Map.Entry<GuiHandler, NetworkHandler> init = UIInit.initCommon(OpenSignalsMain.MODID,
-                OpenSignalsMain.getLogger(), OpenSignalsMain.isDebug());
+                OpenSignalsMain.getLogger(), OpenSignalsMain.isDebug(), eventBus);
         OpenSignalsMain.handler = init.getKey();
         OpenSignalsMain.network = init.getValue();
         OpenSignalsMain.handler.addServer(Placementtool.class, ContainerPlacementtool::new);

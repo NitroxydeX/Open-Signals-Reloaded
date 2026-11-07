@@ -20,7 +20,7 @@ import com.troblecodings.signals.handler.NameHandler;
 import com.troblecodings.signals.handler.SignalStateHandler;
 import com.troblecodings.signals.handler.SignalStateInfo;
 import com.troblecodings.signals.init.OSBlocks;
-import com.troblecodings.signals.init.OSTabs;
+
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionHand;
@@ -32,8 +32,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 public class Placementtool extends Item
         implements IIntegerable<Signal>, ITagableItem, MessageWrapper {
@@ -44,7 +44,7 @@ public class Placementtool extends Item
     public final ArrayList<Signal> signals = new ArrayList<>();
 
     public Placementtool() {
-        super(new Item.Properties().tab(OSTabs.TAB).durability(100).setNoRepair());
+        super(new Item.Properties().durability(100).setNoRepair());
     }
 
     @OnlyIn(Dist.CLIENT)
@@ -109,7 +109,9 @@ public class Placementtool extends Item
 
         final ItemStack item = context.getItemInHand();
         item.hurtAndBreak(Math.abs(cost), player,
-                (user) -> user.broadcastBreakEvent(context.getHand()));
+                context.getHand() == InteractionHand.MAIN_HAND
+                        ? net.minecraft.world.entity.EquipmentSlot.MAINHAND
+                        : net.minecraft.world.entity.EquipmentSlot.OFFHAND);
 
         final int height = signal.getHeight(signalProperties);
         final BlockPos pos = context.getClickedPos().above();

@@ -3,21 +3,21 @@ package com.troblecodings.signals.animation;
 import java.util.Objects;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.math.Quaternion;
+import org.joml.Quaternionf;
 import com.troblecodings.core.VectorWrapper;
 
 public class ModelTranslation {
 
     private VectorWrapper pivotTranslation = VectorWrapper.ZERO;
-    private Quaternion quaternion = Quaternion.ONE;
+    private Quaternionf quaternion = new Quaternionf();
     private SignalAnimation animation;
     private VectorWrapper modelTranslation = VectorWrapper.ZERO;
     private VectorWrapper translation = VectorWrapper.ZERO;
     private boolean renderModel = false;
 
-    public ModelTranslation(final VectorWrapper firstTranslation, final Quaternion quaternion) {
+    public ModelTranslation(final VectorWrapper firstTranslation, final Quaternionf quaternion) {
         this.pivotTranslation = firstTranslation;
-        this.quaternion = quaternion;
+        this.quaternion = new Quaternionf(quaternion);
     }
 
     public ModelTranslation(final VectorWrapper translation) {
@@ -28,17 +28,15 @@ public class ModelTranslation {
         stack.translate(modelTranslation.getX() - 0.5f, modelTranslation.getY() - 0.5f,
                 modelTranslation.getZ() - 0.5f);
 
-        if (!quaternion.equals(Quaternion.ONE)) {
-            stack.mulPose(quaternion);
-        }
+        stack.mulPose(quaternion);
         if (!translation.equals(VectorWrapper.ZERO)) {
             stack.translate(translation.getX(), translation.getY(), translation.getZ());
         }
         stack.translate(pivotTranslation.getX(), pivotTranslation.getY(), pivotTranslation.getZ());
     }
 
-    public Quaternion getQuaternion() {
-        return quaternion;
+    public Quaternionf getQuaternion() {
+        return new Quaternionf(quaternion);
     }
 
     public VectorWrapper getTranslation() {
@@ -56,7 +54,7 @@ public class ModelTranslation {
 
     public void setUpNewTranslation(final ModelTranslation other) {
         this.pivotTranslation = other.pivotTranslation;
-        this.quaternion = other.quaternion;
+        this.quaternion = new Quaternionf(other.quaternion);
         this.translation = other.translation;
     }
 

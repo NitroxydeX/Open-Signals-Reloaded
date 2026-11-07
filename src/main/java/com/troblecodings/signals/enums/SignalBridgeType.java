@@ -5,7 +5,6 @@ import com.troblecodings.signals.init.OSBlocks;
 import com.troblecodings.signals.signalbridge.SignalBridgeBasicBlock;
 import com.troblecodings.signals.signalbridge.SignalBridgeBlockProperties;
 
-import net.minecraft.resources.ResourceLocation;
 
 public enum SignalBridgeType {
 
@@ -14,12 +13,11 @@ public enum SignalBridgeType {
     public SignalBridgeBasicBlock createNewBlock(final String name,
             final SignalBridgeBlockProperties properties) {
         final SignalBridgeBasicBlock block = new SignalBridgeBasicBlock(properties);
-        block.setRegistryName(new ResourceLocation(OpenSignalsMain.MODID, name.toLowerCase()));
         if (OSBlocks.BLOCKS_TO_REGISTER.contains(block)) {
             OpenSignalsMain.exitMinecraftWithMessage(
                     "Block for [" + name.toLowerCase() + "] alredy exists!");
         }
-        OSBlocks.BLOCKS_TO_REGISTER.add(block);
+        OSBlocks.loadBlock(block, name);
         return block;
     }
 

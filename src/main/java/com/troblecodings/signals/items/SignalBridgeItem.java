@@ -19,7 +19,7 @@ import com.troblecodings.signals.handler.NameHandler;
 import com.troblecodings.signals.handler.SignalStateHandler;
 import com.troblecodings.signals.handler.SignalStateInfo;
 import com.troblecodings.signals.init.OSBlocks;
-import com.troblecodings.signals.init.OSTabs;
+
 import com.troblecodings.signals.signalbridge.SignalBridgeBasicBlock;
 import com.troblecodings.signals.signalbridge.SignalBridgeBuilder;
 
@@ -35,7 +35,7 @@ import net.minecraft.world.level.Level;
 public class SignalBridgeItem extends Item implements MessageWrapper {
 
     public SignalBridgeItem() {
-        super(new Item.Properties().tab(OSTabs.TAB).durability(100).setNoRepair());
+        super(new Item.Properties().durability(100).setNoRepair());
     }
 
     @Override

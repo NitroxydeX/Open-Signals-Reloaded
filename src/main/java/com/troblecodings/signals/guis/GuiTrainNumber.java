@@ -96,7 +96,7 @@ public class GuiTrainNumber extends GuiBase {
                             backButtonEntity.setHeight(15);
                             backButtonEntity.setWidth(20);
                             backButtonEntity.add(GuiElements.createButton("<", 20,
-                                    u -> u.getLastUpdateEvent().base.pop()));
+                                    u -> u.getLastUpdateEvent().base().pop()));
 
                             lowerEntity.add(backButtonEntity);
 

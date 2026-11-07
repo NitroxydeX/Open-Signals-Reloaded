@@ -23,9 +23,7 @@ import com.troblecodings.signals.models.ModelInfoWrapper;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.AABB;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.model.data.IModelData;
+import net.neoforged.neoforge.client.model.data.ModelData;
 
 public class SignalTileEntity extends SyncableTileEntity implements NamableWrapper, ISyncable {
 
@@ -94,13 +92,14 @@ public class SignalTileEntity extends SyncableTileEntity implements NamableWrapp
     }
 
     @Override
-    public @Nonnull IModelData getModelData() {
-        return new ModelInfoWrapper(properties);
+    public @Nonnull ModelData getModelData() {
+        return new ModelInfoWrapper(properties).toModelData();
     }
 
-    @OnlyIn(Dist.CLIENT)
     @Override
     public void requestModelDataUpdate() {
+        if (level == null || !level.isClientSide)
+            return;
         final Map<SEProperty, String> newProperties =
                 ClientSignalStateHandler.getClientStates(new StateInfo(level, worldPosition));
         final boolean wasEmpty = properties.isEmpty();
@@ -108,18 +107,21 @@ public class SignalTileEntity extends SyncableTileEntity implements NamableWrapp
         this.properties.clear();
         this.properties.putAll(newProperties);
         super.requestModelDataUpdate();
+        net.minecraft.client.Minecraft.getInstance().levelRenderer.setBlocksDirty(
+                worldPosition.getX(), worldPosition.getY(), worldPosition.getZ(),
+                worldPosition.getX(), worldPosition.getY(), worldPosition.getZ());
     }
 
     @Override
     public void onLoad() {
+        super.onLoad();
         if (!level.isClientSide) {
             SignalStateHandler.addListener(new SignalStateInfo(level, worldPosition, getSignal()),
                     listener);
-        } else if (getSignal().hasAnimation()) {
-            handler.updateAnimationListFromBlock();
-            handler.updateStates(
-                    ClientSignalStateHandler.getClientStates(new StateInfo(level, worldPosition)),
-                    true);
+        } else {
+            if (getSignal().hasAnimation())
+                handler.updateAnimationListFromBlock();
+            requestModelDataUpdate();
         }
     }
 
@@ -131,9 +133,8 @@ public class SignalTileEntity extends SyncableTileEntity implements NamableWrapp
         }
     }
 
-    @Override
     public AABB getRenderBoundingBox() {
         return getSignal().getRenderBox().map(box -> box.move(worldPosition))
-                .orElse(super.getRenderBoundingBox());
+                .orElse(new AABB(worldPosition));
     }
 }

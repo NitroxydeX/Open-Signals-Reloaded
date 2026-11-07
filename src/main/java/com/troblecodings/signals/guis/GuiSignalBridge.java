@@ -9,7 +9,7 @@ import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
 import com.google.common.collect.Maps;
-import com.mojang.math.Quaternion;
+import org.joml.Quaternionf;
 import com.troblecodings.core.I18Wrapper;
 import com.troblecodings.core.VectorWrapper;
 import com.troblecodings.core.WriteBuffer;
@@ -301,7 +301,7 @@ public class GuiSignalBridge extends GuiBase {
         list.setInherits(true);
         list.add(new UIBox(UIBox.VBOX, 1).setPageable(false));
         final IIntegerable<Signal> availableSignals =
-                SizeIntegerables.of(I18Wrapper.format("gui.signalbridge.signals"),
+                SizeIntegerables.of("signal",
                         SIGNALS_FOR_BRIDGE.size(), i -> SIGNALS_FOR_BRIDGE.get(i));
         final UIEntity addButton = GuiElements.createButton("+", e -> {
             disableMultiRenderer();
@@ -708,7 +708,7 @@ public class GuiSignalBridge extends GuiBase {
             final UILabel label =
                     new UILabel(customName.isEmpty()
                             ? I18Wrapper.format("block." + OpenSignalsMain.MODID + "."
-                                    + block.delegate.name().getPath())
+                                    + net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block).getPath())
                             : customName);
             label.setCenterY(false);
             label.setTextColor(blockEntity.getBasicTextColor());
@@ -725,7 +725,7 @@ public class GuiSignalBridge extends GuiBase {
 
         if (enableRotation) {
             preview.add(new UIDrag(
-                    (x, y) -> renderer.updateRotation(Quaternion.fromXYZ(0, (float) x * 0.1f, 0)),
+                    (x, y) -> renderer.updateRotation(new Quaternionf().rotationXYZ(0, (float) x * 0.1f, 0)),
                     1));
         }
 

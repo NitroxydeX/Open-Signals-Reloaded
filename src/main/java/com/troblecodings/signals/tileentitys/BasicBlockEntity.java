@@ -12,6 +12,7 @@ import com.troblecodings.signals.handler.ClientNameHandler;
 import com.troblecodings.signals.handler.NameHandler;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
@@ -32,15 +33,15 @@ public class BasicBlockEntity extends BlockEntity implements NamableWrapper, ICh
     }
 
     @Override
-    protected final void saveAdditional(final CompoundTag tag) {
-        super.saveAdditional(tag);
+    protected final void saveAdditional(final CompoundTag tag, final HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
         saveWrapper(new NBTWrapper(tag));
     }
 
     @Override
-    public final void load(final CompoundTag tag) {
+    protected final void loadAdditional(final CompoundTag tag, final HolderLookup.Provider registries) {
         this.loadWrapper(new NBTWrapper(tag));
-        super.load(tag);
+        super.loadAdditional(tag, registries);
     }
 
     public List<BlockPos> getLinkedPos() {

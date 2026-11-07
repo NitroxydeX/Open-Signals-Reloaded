@@ -1,22 +1,12 @@
-buildscript {
-    repositories {
-        maven { url = 'https://maven.minecraftforge.net/' }
-        maven { url = 'https://plugins.gradle.org/m2/' }
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'net.minecraftforge.gradle:ForgeGradle:6.0.+'
-        classpath "gradle.plugin.com.matthewprenger:CurseGradle:1.4.0"
-        classpath "com.modrinth.minotaur:Minotaur:2.+"
-    }
+plugins {
+    id 'java-library'
+    id 'eclipse'
+    id 'idea'
+    id 'maven-publish'
+    id 'net.neoforged.moddev' version '2.0.148'
+    id 'com.matthewprenger.cursegradle' version '1.4.0'
+    id 'com.modrinth.minotaur' version '2.8.10'
 }
-
-apply plugin: 'net.minecraftforge.gradle'
-apply plugin: 'eclipse'
-apply plugin: 'maven-publish'
-apply plugin: 'com.matthewprenger.cursegradle'
-apply plugin: 'com.modrinth.minotaur'
-
 group = project.mod_group
 version = project.mod_version
 
@@ -40,30 +30,39 @@ sourceSets {
     }
 }
 
-minecraft {
-    mappings channel: 'official', version: project.minecraft_version
-
-    accessTransformer = file(
-        'src/main/resources/META-INF/accesstransformer.cfg'
-    )
-
+neoForge {
+    version = project.neo_version
+    accessTransformers = files()
     runs {
-        client {
-            workingDirectory project.file('run')
-            property 'forge.logging.console.level', 'debug'
-        }
-
+        client { client() }
         server {
-            property 'forge.logging.console.level', 'debug'
+            server()
+            programArgument '--nogui'
+        }
+        configureEach {
+            gameDirectory = project.file('run')
+            logLevel = org.slf4j.event.Level.DEBUG
+        }
+    }
+    mods {
+        "${project.mod_id}" {
+            sourceSet(sourceSets.main)
         }
     }
 }
 
+repositories { mavenCentral() }
+
 dependencies {
-    minecraft "net.minecraftforge:forge:${project.minecraft_version}-${project.forge_version}"
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
+sourceSets.main.resources.exclude('META-INF/accesstransformer.cfg')
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
 test {
     useJUnitPlatform()
 }
@@ -82,7 +81,7 @@ jar {
     }
 }
 
-jar.finalizedBy('reobfJar')
+
 
 def key = System.getenv("CURSETOKEN")
 if (key == null)

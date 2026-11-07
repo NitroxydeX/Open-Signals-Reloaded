@@ -25,7 +25,7 @@ import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition.Builder;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
-import net.minecraft.world.level.material.Material;
+import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.phys.HitResult;
 
 public class SignalBridgeBasicBlock extends BasicBlock {
@@ -38,8 +38,8 @@ public class SignalBridgeBasicBlock extends BasicBlock {
     private final int id;
 
     public SignalBridgeBasicBlock(final SignalBridgeBlockProperties properties) {
-        super(Properties.of(Material.STONE).noOcclusion()
-                .lightLevel(u -> ConfigHandler.GENERAL.lightEmission.get())
+        super(Properties.of().mapColor(MapColor.STONE).noOcclusion()
+                .lightLevel(u -> ConfigHandler.GENERAL.lightEmission.getDefault())
                 .isRedstoneConductor((_u1, _u2, _u3) -> false));
         registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH));
         this.properties = properties;
@@ -49,6 +49,11 @@ public class SignalBridgeBasicBlock extends BasicBlock {
 
     public int getID() {
         return id;
+    }
+
+    @Override
+    public int getLightEmission(final BlockState state, final BlockGetter level, final BlockPos pos) {
+        return ConfigHandler.getSignalLightEmission();
     }
 
     public SignalBridgeType getType() {
@@ -84,7 +89,7 @@ public class SignalBridgeBasicBlock extends BasicBlock {
 
     @Override
     public ItemStack getCloneItemStack(final BlockState state, final HitResult target,
-            final BlockGetter level, final BlockPos pos, final Player player) {
+            final net.minecraft.world.level.LevelReader level, final BlockPos pos, final Player player) {
         return new ItemStack(OSItems.SIGNAL_BRIDGE_ITEM);
     }
 

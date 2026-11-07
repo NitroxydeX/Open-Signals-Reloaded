@@ -18,7 +18,7 @@ import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat.Mode;
-import com.mojang.math.Quaternion;
+import org.joml.Quaternionf;
 import com.troblecodings.guilib.ecs.entitys.BufferWrapper;
 import com.troblecodings.guilib.ecs.entitys.DrawInfo;
 import com.troblecodings.guilib.ecs.entitys.UIComponent;
@@ -132,7 +132,7 @@ public class UISignalBoxRendering extends UIComponent {
             info.push();
             info.depthOn();
             info.translate(HALF_TILE, HALF_TILE, 0);
-            info.rotate(Quaternion.fromXYZ(0, 0,
+            info.rotate(new Quaternionf().rotationXYZ(0, 0,
                     set.rotation.ordinal() * UIRotate.PERPENDICULAR_ANGLE));
             info.translate(-HALF_TILE, -HALF_TILE, set.mode.depthFunc.apply(rInfo.state));
             rInfo.component.accept(info);
@@ -235,11 +235,11 @@ public class UISignalBoxRendering extends UIComponent {
         info.translate(TILE_WIDTH * point.getX(), TILE_WIDTH * point.getY(), 10);
         if (!rot.equals(Rotation.NONE)) {
             info.translate(HALF_TILE, HALF_TILE, 0);
-            info.rotate(Quaternion.fromXYZ(0, 0, rot.ordinal() * UIRotate.PERPENDICULAR_ANGLE));
+            info.rotate(new Quaternionf().rotationXYZ(0, 0, rot.ordinal() * UIRotate.PERPENDICULAR_ANGLE));
             info.translate(-HALF_TILE, -HALF_TILE, 0);
         }
         info.scale(scale, scale, scale);
-        font.draw(info.stack, str, restWidth, restHeight, color);
+        info.drawString(font, str, restWidth, restHeight, color, false);
         info.pop();
     }
 

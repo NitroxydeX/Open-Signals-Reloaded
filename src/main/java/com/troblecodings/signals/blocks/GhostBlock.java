@@ -2,9 +2,9 @@ package com.troblecodings.signals.blocks;
 
 import com.troblecodings.signals.config.ConfigHandler;
 import com.troblecodings.signals.core.DestroyHelper;
-import com.troblecodings.signals.models.CustomModelLoader;
 
-import net.minecraft.client.Minecraft;
+
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.InteractionHand;
@@ -17,21 +17,21 @@ import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.StateDefinition;
-import net.minecraft.world.level.material.Material;
+
+import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+
+
 
 public class GhostBlock extends BasicBlock {
 
     public GhostBlock() {
-        super(Properties.of(Material.GLASS).noOcclusion()
-                .lightLevel(u -> ConfigHandler.GENERAL.lightEmission.get()));
+        super(Properties.of().mapColor(MapColor.NONE).noOcclusion().noTerrainParticles()
+                .lightLevel(u -> ConfigHandler.GENERAL.lightEmission.getDefault()));
         registerDefaultState(defaultBlockState());
     }
 
@@ -41,11 +41,15 @@ public class GhostBlock extends BasicBlock {
     }
 
     @Override
+    public int getLightEmission(final BlockState state, final BlockGetter level, final BlockPos pos) {
+        return ConfigHandler.getSignalLightEmission();
+    }
+
+    @Override
     public RenderShape getRenderShape(final BlockState state) {
         return RenderShape.INVISIBLE;
     }
 
-    @SuppressWarnings("deprecation")
     @Override
     public VoxelShape getShape(final BlockState state, final BlockGetter getter, final BlockPos pos,
             final CollisionContext context) {
@@ -53,7 +57,7 @@ public class GhostBlock extends BasicBlock {
         final BlockState lowerState = getter.getBlockState(lowerPos);
         final Block lowerBlock = lowerState.getBlock();
         if (isRightBlock(lowerBlock))
-            return lowerBlock.getShape(lowerState, getter, lowerPos, context).move(0, -1, 0);
+            return lowerState.getShape(getter, lowerPos, context).move(0, -1, 0);
         return Shapes.block();
     }
 
@@ -71,18 +75,9 @@ public class GhostBlock extends BasicBlock {
         }, block -> block instanceof GhostBlock || block instanceof Signal);
     }
 
-    @OnlyIn(Dist.CLIENT)
-    @Override
-    public StateDefinition<Block, BlockState> getStateDefinition() {
-        if (!Minecraft.getInstance().isLocalServer()) {
-            CustomModelLoader.INSTANCE.prepare();
-        }
-        return super.getStateDefinition();
-    }
-
     @Override
     public ItemStack getCloneItemStack(final BlockState state, final HitResult target,
-            final BlockGetter level, final BlockPos pos, final Player player) {
+            final net.minecraft.world.level.LevelReader level, final BlockPos pos, final Player player) {
         final BlockPos downPos = pos.below();
         final BlockState lowerState = level.getBlockState(downPos);
         final Block lowerBlock = lowerState.getBlock();
@@ -91,15 +86,24 @@ public class GhostBlock extends BasicBlock {
         return super.getCloneItemStack(state, target, level, pos, player);
     }
 
-    @SuppressWarnings("deprecation")
     @Override
-    public InteractionResult use(final BlockState state, final Level world, final BlockPos pos,
-            final Player player, final InteractionHand hand, final BlockHitResult result) {
+    protected net.minecraft.world.ItemInteractionResult useItemOn(final ItemStack stack,
+            final BlockState state, final Level world, final BlockPos pos, final Player player,
+            final InteractionHand hand, final BlockHitResult result) {
         final BlockPos lowerPos = pos.below();
         final BlockState lowerState = world.getBlockState(lowerPos);
-        final Block lowerBlock = lowerState.getBlock();
-        if (isRightBlock(lowerBlock))
-            return lowerBlock.use(lowerState, world, lowerPos, player, hand, result);
+        if (isRightBlock(lowerState.getBlock()))
+            return lowerState.useItemOn(stack, world, player, hand, result.withPosition(lowerPos));
+        return net.minecraft.world.ItemInteractionResult.FAIL;
+    }
+
+    @Override
+    protected InteractionResult useWithoutItem(final BlockState state, final Level world,
+            final BlockPos pos, final Player player, final BlockHitResult result) {
+        final BlockPos lowerPos = pos.below();
+        final BlockState lowerState = world.getBlockState(lowerPos);
+        if (isRightBlock(lowerState.getBlock()))
+            return lowerState.useWithoutItem(world, player, result.withPosition(lowerPos));
         return InteractionResult.FAIL;
     }
 
